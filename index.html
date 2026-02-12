@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>College Cricket Live</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; }
+        .live-badge { animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        .btn-tap:active { transform: scale(0.95); }
+        
+        /* Loading Spinner */
+        .loader {
+            border: 3px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 3px solid #3498db;
+            width: 20px;
+            height: 20px;
+            -webkit-animation: spin 2s linear infinite; /* Safari */
+            animation: spin 2s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body class="text-slate-800 pb-20">
+
+    <!-- Navbar -->
+    <header class="bg-teal-700 text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-md mx-auto px-4 py-3 flex justify-between items-center">
+            <div class="flex items-center space-x-2">
+                <i class="fas fa-cricket text-xl"></i>
+                <h1 class="text-lg font-bold">CricLive</h1>
+            </div>
+            <div class="flex items-center space-x-3">
+                <div id="connectionStatus" class="hidden"><div class="loader"></div></div>
+                <span class="live-badge text-[10px] font-bold bg-red-600 px-2 py-0.5 rounded text-white uppercase tracking-wider">LIVE</span>
+                <button onclick="window.toggleAdminModal()" class="text-white/80 hover:text-white p-2">
+                    <i class="fas fa-lock"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-md mx-auto">
+        
+        <!-- Score Header -->
+        <div class="bg-white shadow-sm pb-4 mb-2">
+            <div class="px-4 py-4 border-b border-gray-100">
+                <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1" id="matchTitle">Connecting...</h2>
+                <div class="flex justify-between items-end">
+                    <div>
+                        <div class="text-4xl font-extrabold text-gray-900 tracking-tight">
+                            <span id="score">0</span>/<span id="wickets">0</span>
+                        </div>
+                        <div class="text-sm text-gray-500 mt-1 font-medium">
+                            <span id="overs">0.0</span> Overs <span class="mx-1 text-gray-300">|</span> CRR: <span id="crr">0.00</span>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="px-3 py-1 bg-teal-50 text-teal-800 rounded-full text-xs font-bold border border-teal-100" id="battingTeam">Team A</div>
+                        <div class="text-xs text-gray-400 mt-2">Target: <span id="target">--</span></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Balls -->
+            <div class="px-4 py-3 flex items-center space-x-3 overflow-x-auto whitespace-nowrap bg-gray-50/50">
+                <span class="text-[10px] font-bold text-gray-400 uppercase">Last 6:</span>
+                <div id="recentBalls" class="flex space-x-2">
+                    <!-- Balls injected here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Status -->
+        <div class="bg-white shadow-sm mb-2 divide-y divide-gray-100">
+            <!-- Striker -->
+            <div class="px-4 py-3 flex justify-between items-center bg-teal-50/30">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-baseball-bat-ball text-teal-600 text-xs"></i>
+                    <span class="text-sm font-bold text-gray-800" id="strikerName">Batter 1</span>
+                    <span class="text-teal-600 text-xs font-bold">*</span>
+                </div>
+                <div class="font-mono text-sm text-gray-700 font-bold">
+                    <span id="strikerRuns">0</span><span class="text-gray-400 text-xs font-normal"> (<span id="strikerBalls">0</span>)</span>
+                </div>
+            </div>
+            <!-- Non-Striker -->
+            <div class="px-4 py-3 flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm font-semibold text-gray-600" id="nonStrikerName">Batter 2</span>
+                </div>
+                <div class="font-mono text-sm text-gray-600">
+                    <span id="nonStrikerRuns">0</span><span class="text-gray-400 text-xs font-normal"> (<span id="nonStrikerBalls">0</span>)</span>
+                </div>
+            </div>
+            <!-- Bowler -->
+            <div class="px-4 py-3 flex justify-between items-center bg-gray-50">
+                <div class="flex items-center space-x-2">
+                    <i class="fas fa-bowling-ball text-gray-400 text-xs"></i>
+                    <span class="text-sm font-semibold text-gray-700" id="bowlerName">Bowler</span>
+                </div>
+                <div class="font-mono text-xs text-gray-600">
+                    <span id="bowlerFigs" class="font-bold text-gray-800">0-0</span> <span class="text-gray-400">(<span id="bowlerOvers">0.0</span>)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Commentary Box -->
+        <div class="bg-white shadow-sm">
+            <div class="px-4 py-2 border-b border-gray-100 bg-gray-50">
+                <h3 class="text-xs font-bold text-gray-500 uppercase">Live Commentary</h3>
+            </div>
+            <div id="commList" class="max-h-60 overflow-y-auto divide-y divide-gray-50">
+                <div class="p-4 text-center text-gray-400 text-xs italic">Waiting for match data...</div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ADMIN PANEL OVERLAY -->
+    <div id="adminModal" class="fixed inset-0 bg-black/95 z-50 hidden overflow-y-auto">
+        <div class="min-h-screen flex flex-col p-4">
+            
+            <!-- Login View -->
+            <div id="loginView" class="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
+                <h2 class="text-white text-2xl font-bold mb-6 text-center">Scorer Login</h2>
+                <div class="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <input type="password" id="adminPass" placeholder="Enter Password" class="w-full bg-gray-900 border border-gray-600 rounded-lg px-4 py-3 text-white mb-4 focus:border-teal-500 outline-none">
+                    <button onclick="window.verifyAdmin()" class="w-full bg-teal-600 hover:bg-teal-500 text-white font-bold py-3 rounded-lg btn-tap transition">Login</button>
+                    <p class="text-xs text-gray-500 mt-4 text-center">Default: Pinku@31</p>
+                </div>
+                <button onclick="window.toggleAdminModal()" class="w-full mt-6 text-gray-500 text-sm">Close</button>
+            </div>
+
+            <!-- Control Panel View -->
+            <div id="controlView" class="hidden pb-20 max-w-md mx-auto w-full">
+                <div class="flex justify-between items-center mb-6 pt-4 sticky top-0 bg-black/95 py-2 z-10">
+                    <h2 class="text-white text-lg font-bold">Control Panel</h2>
+                    <div class="flex gap-3">
+                        <button onclick="window.showSettings()" class="text-gray-400 bg-gray-800 p-2 rounded-full w-10 h-10"><i class="fas fa-cog"></i></button>
+                        <button onclick="window.toggleAdminModal()" class="text-red-400 bg-gray-800 p-2 rounded-full w-10 h-10"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+
+                <!-- Run Buttons -->
+                <div class="grid grid-cols-4 gap-3 mb-6">
+                    <button onclick="window.updateScore(0)" class="bg-gray-700 text-white font-bold py-4 rounded-xl btn-tap text-xl hover:bg-gray-600">0</button>
+                    <button onclick="window.updateScore(1)" class="bg-gray-700 text-white font-bold py-4 rounded-xl btn-tap text-xl hover:bg-gray-600">1</button>
+                    <button onclick="window.updateScore(2)" class="bg-gray-700 text-white font-bold py-4 rounded-xl btn-tap text-xl hover:bg-gray-600">2</button>
+                    <button onclick="window.updateScore(3)" class="bg-gray-700 text-white font-bold py-4 rounded-xl btn-tap text-xl hover:bg-gray-600">3</button>
+                    <button onclick="window.updateScore(4)" class="bg-blue-600 text-white font-bold py-4 rounded-xl btn-tap text-xl shadow-lg shadow-blue-900/50">4</button>
+                    <button onclick="window.updateScore(6)" class="bg-purple-600 text-white font-bold py-4 rounded-xl btn-tap text-xl shadow-lg shadow-purple-900/50">6</button>
+                    <button onclick="window.updateExtra('WD')" class="bg-yellow-600 text-white font-bold py-4 rounded-xl btn-tap text-sm">WD</button>
+                    <button onclick="window.updateExtra('NB')" class="bg-orange-600 text-white font-bold py-4 rounded-xl btn-tap text-sm">NB</button>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <button onclick="window.handleWicket()" class="bg-red-600 text-white font-bold py-4 rounded-lg btn-tap shadow-lg shadow-red-900/50">
+                        <i class="fas fa-sign-out-alt mr-2"></i> OUT
+                    </button>
+                    <button onclick="window.rotateStrike()" class="bg-indigo-600 text-white font-bold py-4 rounded-lg btn-tap">
+                        <i class="fas fa-sync-alt mr-2"></i> Rotate
+                    </button>
+                </div>
+
+                <!-- Edit Players -->
+                <div class="bg-gray-800 p-4 rounded-xl mb-4 border border-gray-700">
+                    <h3 class="text-gray-400 text-xs font-bold uppercase mb-3">Player Management</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="text-teal-500 text-[10px] uppercase font-bold">Striker</label>
+                            <input id="editStriker" class="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded text-sm focus:border-teal-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="text-gray-500 text-[10px] uppercase font-bold">Non-Striker</label>
+                            <input id="editNonStriker" class="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded text-sm focus:border-teal-500 outline-none">
+                        </div>
+                        <div class="flex gap-2 items-end">
+                            <div class="flex-1">
+                                <label class="text-gray-500 text-[10px] uppercase font-bold">Bowler</label>
+                                <input id="editBowler" class="w-full bg-gray-900 border border-gray-700 text-white px-3 py-2 rounded text-sm focus:border-teal-500 outline-none">
+                            </div>
+                            <button onclick="window.savePlayers()" class="bg-teal-600 text-white px-4 py-2 rounded text-sm font-bold h-[38px]">SET</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Comm -->
+                <div class="flex gap-2">
+                    <input id="customMsg" placeholder="Custom commentary..." class="flex-1 bg-gray-800 border border-gray-700 text-white px-3 py-3 rounded-lg text-sm outline-none focus:border-teal-500">
+                    <button onclick="window.sendComm()" class="bg-gray-600 text-white px-4 rounded-lg"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+
+            <!-- Settings View -->
+            <div id="settingsView" class="hidden pt-10 max-w-md mx-auto w-full">
+                <h2 class="text-white text-xl font-bold mb-6">Match Settings</h2>
+                
+                <div class="bg-gray-800 rounded-xl p-4 mb-4 border border-gray-700">
+                    <label class="text-gray-400 text-xs uppercase block mb-2">Change Password</label>
+                    <input id="newPassword" placeholder="New Password" class="w-full bg-gray-900 border border-gray-600 text-white px-3 py-2 rounded mb-2 outline-none">
+                    <button onclick="window.changePassword()" class="w-full bg-blue-600 text-white py-2 rounded text-sm font-bold mt-2">Update Password</button>
+                </div>
+
+                <div class="bg-gray-800 rounded-xl p-4 mb-4 border border-gray-700">
+                    <label class="text-gray-400 text-xs uppercase block mb-2">Match Title</label>
+                    <input id="newTitle" placeholder="e.g. CSE vs MECH" class="w-full bg-gray-900 border border-gray-600 text-white px-3 py-2 rounded mb-2 outline-none">
+                    <button onclick="window.updateMatchDetails()" class="w-full bg-gray-600 text-white py-2 rounded text-sm font-bold mt-2">Update Title</button>
+                </div>
+
+                <button onclick="window.resetMatch()" class="w-full border border-red-500 text-red-500 hover:bg-red-500 hover:text-white transition py-3 rounded-lg font-bold mb-4">Reset Match</button>
+                <button onclick="window.hideSettings()" class="w-full text-gray-400 py-2">Back to Controls</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- FIREBASE APP LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc, arrayUnion } 
+        from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // --- YOUR CONFIGURATION ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyD1xXp7HdfIJx6zlEFAJRAPqnSqtB45T14",
+            authDomain: "cricketmatch-d5189.firebaseapp.com",
+            projectId: "cricketmatch-d5189",
+            storageBucket: "cricketmatch-d5189.firebasestorage.app",
+            messagingSenderId: "853349010179",
+            appId: "1:853349010179:web:0172a8e20eea613924f736",
+            measurementId: "G-VQ169V2XMM"
+        };
+
+        // --- GLOBAL STATE ---
+        let app, db, matchRef, currentData;
+
+        // --- INITIALIZATION ---
+        try {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            matchRef = doc(db, "matches", "live");
+            
+            // Show loading spinner
+            document.getElementById('connectionStatus').classList.remove('hidden');
+
+            onSnapshot(matchRef, (docSnap) => {
+                document.getElementById('connectionStatus').classList.add('hidden'); // Hide spinner on success
+                
+                if (docSnap.exists()) {
+                    currentData = docSnap.data();
+                    renderUI(currentData);
+                } else {
+                    // Create default data if not exists
+                    console.log("Creating new match...");
+                    setDoc(matchRef, defaultData);
+                }
+            }, (error) => {
+                console.error("Firebase Error:", error);
+                alert("Database Error: " + error.code + "\n\nMake sure you created the 'Firestore Database' in the Firebase Console in 'Test Mode'.");
+            });
+
+        } catch (e) {
+            alert("Configuration Error: " + e.message);
+        }
+
+        // --- DEFAULT DATA TEMPLATE ---
+        const defaultData = {
+            title: "College League Match",
+            battingTeam: "Home",
+            score: 0,
+            wickets: 0,
+            overs: 0, 
+            password: "Pinku@31", 
+            striker: { name: "Batter 1", runs: 0, balls: 0 },
+            nonStriker: { name: "Batter 2", runs: 0, balls: 0 },
+            bowler: { name: "Bowler 1", runs: 0, wickets: 0, overs: 0 }, 
+            recent: [],
+            commentary: [],
+            lastUpdate: Date.now()
+        };
+
+        // --- UI RENDER LOGIC ---
+        function renderUI(data) {
+            document.getElementById('matchTitle').innerText = data.title;
+            document.getElementById('score').innerText = data.score;
+            document.getElementById('wickets').innerText = data.wickets;
+            document.getElementById('battingTeam').innerText = data.battingTeam;
+            
+            // Overs
+            const ovs = Math.floor(data.overs / 6) + '.' + (data.overs % 6);
+            document.getElementById('overs').innerText = ovs;
+            const rr = data.overs > 0 ? (data.score / (data.overs/6)).toFixed(2) : "0.0";
+            document.getElementById('crr').innerText = rr;
+
+            // Players
+            document.getElementById('strikerName').innerText = data.striker.name;
+            document.getElementById('strikerRuns').innerText = data.striker.runs;
+            document.getElementById('strikerBalls').innerText = data.striker.balls;
+            document.getElementById('nonStrikerName').innerText = data.nonStriker.name;
+            document.getElementById('nonStrikerRuns').innerText = data.nonStriker.runs;
+            document.getElementById('nonStrikerBalls').innerText = data.nonStriker.balls;
+
+            // Bowler
+            document.getElementById('bowlerName').innerText = data.bowler.name;
+            const bOv = Math.floor(data.bowler.overs / 6) + '.' + (data.bowler.overs % 6);
+            document.getElementById('bowlerOvers').innerText = bOv;
+            document.getElementById('bowlerFigs').innerText = `${data.bowler.wickets}-${data.bowler.runs}`;
+
+            // Recent Balls
+            const ballContainer = document.getElementById('recentBalls');
+            ballContainer.innerHTML = '';
+            (data.recent || []).slice(-6).forEach(b => {
+                let color = "bg-gray-200 text-gray-600";
+                if(b == '4') color = "bg-blue-600 text-white";
+                if(b == '6') color = "bg-purple-600 text-white";
+                if(b == 'W') color = "bg-red-600 text-white";
+                if(b == 'WD' || b == 'NB') color = "bg-orange-500 text-white";
+                ballContainer.innerHTML += `<span class="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${color}">${b}</span>`;
+            });
+
+            // Commentary
+            const commDiv = document.getElementById('commList');
+            commDiv.innerHTML = '';
+            (data.commentary || []).slice().reverse().slice(0,15).forEach(c => {
+                commDiv.innerHTML += `<div class="p-3 text-sm text-gray-600 border-b border-gray-50"><span class="font-bold text-gray-800 mr-2">${c.over}</span> ${c.text}</div>`;
+            });
+
+            // Sync Admin Inputs
+            if(!document.getElementById('adminModal').classList.contains('hidden')) {
+                // Only update inputs if they are empty to prevent overwriting user while typing
+                if(document.getElementById('editStriker').value === "") document.getElementById('editStriker').value = data.striker.name;
+                if(document.getElementById('editNonStriker').value === "") document.getElementById('editNonStriker').value = data.nonStriker.name;
+                if(document.getElementById('editBowler').value === "") document.getElementById('editBowler').value = data.bowler.name;
+            }
+        }
+
+        // --- GLOBAL FUNCTIONS (Attached to Window for HTML access) ---
+
+        window.toggleAdminModal = () => {
+            const m
